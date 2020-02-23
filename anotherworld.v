@@ -1,6 +1,6 @@
 `include "hvsync_generator.v"
 
-module anotherworld_vpu(clk, reset, hsync, vsync, rgb);
+module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
 
   input clk, reset;
   output hsync, vsync;
