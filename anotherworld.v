@@ -26,12 +26,29 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
 
 
   reg [3:0] step;
+  reg [7:0] opcode;
+  reg [7:0] PC;
+  reg [7:0] mem[0:'h6E];
+  initial $readmemh("bytecode.mem", mem);
+
   always @ (posedge clk)
-    begin
-      if (~reset)
-        step <= 0;  // reset register
-      else
-        step <= step + 1;  // increment register
-    end
+  begin
+    opcode = mem[PC];
+  end
+
+  always @ (posedge clk)
+  begin
+    if (~reset)
+      step <= 0;
+    else
+      step <= step + 1;
+  end
+
+  always @ (step) begin     
+    case(step)
+      3'b000    : opcode = mem[PC];
+      default  : opcode = 0;
+    endcase
+  end
 
 endmodule
