@@ -20,7 +20,7 @@ set_io --warn-no-port LED4  60
 set_io --warn-no-port SW1  53
 set_io --warn-no-port SW2  51
 set_io --warn-no-port SW3  54
-set_io --warn-no-port SW4  52
+set_io --warn-no-port reset  52 # SW4
 
 # ------------ 7 segments -----------------------------------------------------
 set_io --warn-no-port S1_A  3
@@ -40,22 +40,22 @@ set_io --warn-no-port S2_F  8
 set_io --warn-no-port S2_G  96
 
 # -------------------------- SYSTEM CLOCK ------------------------------------
-set_io --warn-no-port CLK 15
+set_io --warn-no-port clk 15 # CLK
 
 # -------------------------- UART --------------------------------------------
 set_io --warn-no-port RX  73
 set_io --warn-no-port TX  74
 
 # -------------------------- VGA ---------------------------------------------
-set_io --warn-no-port VGA_HS  26
-set_io --warn-no-port VGA_VS  27
-set_io --warn-no-port VGA_R0  36
+set_io --warn-no-port hsync  26 # VGA_HS
+set_io --warn-no-port vsync  27 # VGA_VS
+set_io --warn-no-port rgb[0]  36 # VGA_R0
 set_io --warn-no-port VGA_R1  37
 set_io --warn-no-port VGA_R2  40
-set_io --warn-no-port VGA_G0  29
+set_io --warn-no-port rgb[1]  29 # VGA_G0
 set_io --warn-no-port VGA_G1  30
 set_io --warn-no-port VGA_G2  33
-set_io --warn-no-port VGA_B0  28
+set_io --warn-no-port rgb[2]  28 # VGA_B0
 set_io --warn-no-port VGA_B1  41
 set_io --warn-no-port VGA_B2  42
 
