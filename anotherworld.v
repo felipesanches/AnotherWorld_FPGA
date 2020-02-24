@@ -246,13 +246,48 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
       end
 
       `opcode_sub: begin
-        // ...
+        case(step)
+          1: begin
+            dst <= mem[PC];
+            src <= mem[PC+1];
+            PC <= PC + 2;
+            step <= 2;
+          end
+          2: begin
+            vmvar[dst] <= vmvar[dst] - vmvar[src];
+            step <= 0;
+          end
+        endcase
       end
 
       `opcode_and: begin
+        case(step)
+          1: begin
+            dst <= mem[PC];
+            src <= mem[PC+1];
+            PC <= PC + 2;
+            step <= 2;
+          end
+          2: begin
+            vmvar[dst] <= vmvar[dst] & vmvar[src];
+            step <= 0;
+          end
+        endcase
       end
 
       `opcode_or: begin
+        case(step)
+          1: begin
+            dst <= mem[PC];
+            src <= mem[PC+1];
+            PC <= PC + 2;
+            step <= 2;
+          end
+          2: begin
+            vmvar[dst] <= vmvar[dst] | vmvar[src];
+            step <= 0;
+          end
+        endcase
       end
 
       `opcode_shl: begin
