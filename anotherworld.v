@@ -56,8 +56,12 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
   reg [3:0] step;
   reg [7:0] opcode;
   reg [7:0] PC;
+  reg [7:0] src;
+  reg [7:0] dst;
+  reg [7:0] value_H;
+  reg [7:0] value_L;
   reg [7:0] mem[0:8'h6E];
-  reg [7:0] vmvar[0:255];
+  reg [15:0] vmvar[0:255];
 
   integer i;
   initial begin
@@ -77,21 +81,70 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
     if (~reset) begin
         step <= 0;
         PC <= 8'b00000000;
-      end	
+      end
     else
       step <= step + 1;
 
     case(opcode)
       `opcode_movConst: begin
+        case(step)
+          1: begin
+            dst <= mem[PC];
+            value_H <= mem[PC+1];
+            value_L <= mem[PC+2];
+            PC <= PC + 3;
+            step <= 2;
+          end
+          2: begin
+            vmvar[dst] <= word;
+            step <= 0;
+          end
+        endcase
       end
 
       `opcode_mov: begin
+        case(step)
+          1: begin
+            dst <= mem[PC];
+            src <= mem[PC+1];
+            PC <= PC + 2;
+            step <= 2;
+          end
+          2: begin
+            vmvar[dst] <= vmvar[src];
+            step <= 0;
+          end
+        endcase
       end
 
       `opcode_add: begin
+        case(step)
+          1: begin
+            dst <= mem[PC];
+            src <= mem[PC+1];
+            PC <= PC + 2;
+            step <= 2;
+          end
+          2: begin
+            vmvar[dst] <= vmvar[dst] + vmvar[src];
+            step <= 0;
+          end
+        endcase
       end
 
       `opcode_addConst: begin
+        case(step)
+          1: begin
+            dst <= mem[PC];
+            value_L <= mem[PC+1];
+            PC <= PC + 2;
+            step <= 2;
+          end
+          2: begin
+            vmvar[dst] <= vmvar[dst] + value_L;
+            step <= 0;
+          end
+        endcase
       end
 
       `opcode_call: begin
