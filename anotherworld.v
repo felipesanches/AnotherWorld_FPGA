@@ -55,11 +55,13 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
 
   reg [3:0] step;
   reg [7:0] opcode;
+  reg [7:0] subopcode;
   reg [7:0] PC;
   reg [7:0] src;
   reg [7:0] dst;
   reg [7:0] value_H;
   reg [7:0] value_L;
+  reg condition;
   reg [7:0] mem[0:8'h6E];
   reg [15:0] vmvar[0:255];
 
@@ -177,24 +179,64 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
       end
 
       `opcode_condJmp: begin
+        case(step)
+          1: begin
+            subopcode <= mem[PC];
+            src <= mem[PC+1];
+            value_L <= mem[PC+2];
+            PC <= PC + 3;
+            step <= 2;
+          end
+          2: begin
+            if (subopcode[7])
+                 {value_H, value_L} <= vmvar[value_L];
+            else if (subopcode[6]) begin
+                 value_L <= {value_L, mem[PC]};
+                 PC <= PC + 1;
+            end
+            step <= 3;
+          end
+          3: begin
+            case(subopcode[2:0])
+              0: condition <= vmvar[src] == {value_H, value_L}; // jz
+              1: condition <= vmvar[src] != {value_H, value_L}; // jnz
+              2: condition <= vmvar[src] > {value_H, value_L};  // jg
+              3: condition <= vmvar[src] >= {value_H, value_L}; // jge
+              4: condition <= vmvar[src] < {value_H, value_L};  // jl
+              5: condition <= vmvar[src] <= {value_H, value_L}; // jle
+              default: condition <= false;
+            endcase
+            step <= 4;
+          end
+          4: begin
+            if (condition) begin
+              PC <= {value_H, value_L};
+            end
+            step <= 0;
+          end
+        endcase
       end
 
       `opcode_setPalette: begin
+        // ...
       end
 
       `opcode_updateChannel: begin
       end
 
       `opcode_selectVideoPage: begin
+        // ...
       end
 
       `opcode_fillVideoPage: begin
+        // ...
       end
 
       `opcode_copyVideoPage: begin
       end
 
       `opcode_blitFrameBuffer: begin
+        // ...
       end
 
       `opcode_killThread: begin
@@ -204,6 +246,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
       end
 
       `opcode_sub: begin
+        // ...
       end
 
       `opcode_and: begin
