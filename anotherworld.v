@@ -157,6 +157,17 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
       end
 
       `opcode_jmp: begin
+        case(step)
+          1: begin
+            value_H <= mem[PC];
+            value_L <= mem[PC+1];
+            step <= 2;
+          end
+          2: begin
+            PC <= {value_H, value_L};
+            step <= 0;
+          end
+        endcase
       end
 
       `opcode_setVec: begin
