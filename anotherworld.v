@@ -94,7 +94,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   reg [7:0] value_H;
   reg [7:0] value_L;
   reg condition;
-  reg [7:0] mem[0:8'hFFFF];
+  reg [7:0] mem[0:16'hFFFF];
   reg [15:0] stack[0:255];
   reg [15:0] vmvar[0:255];
 
