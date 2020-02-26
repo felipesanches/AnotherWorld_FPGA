@@ -70,7 +70,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
   reg [7:0] value_H;
   reg [7:0] value_L;
   reg condition;
-  reg [7:0] mem[0:8'h6E];
+  reg [7:0] mem[0:8'hFFFF];
   reg [15:0] stack[0:255];
   reg [15:0] vmvar[0:255];
 
@@ -372,9 +372,51 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
       end
 
       `opcode_shl: begin
+        case(step)
+          1: begin
+            dst <= mem[PC];
+            PC <= PC + 1;
+            step <= 2;
+          end
+          2: begin
+            value_H <= mem[PC];
+            PC <= PC + 1;
+            step <= 3;
+          end
+          3: begin
+            value_L <= mem[PC];
+            PC <= PC + 1;
+            step <= 4;
+          end
+          4: begin
+            vmvar[dst] <= vmvar[dst] << {value_H, value_L};
+            step <= 0;
+          end
+        endcase
       end
 
       `opcode_shr: begin
+        case(step)
+          1: begin
+            dst <= mem[PC];
+            PC <= PC + 1;
+            step <= 2;
+          end
+          2: begin
+            value_H <= mem[PC];
+            PC <= PC + 1;
+            step <= 3;
+          end
+          3: begin
+            value_L <= mem[PC];
+            PC <= PC + 1;
+            step <= 4;
+          end
+          4: begin
+            vmvar[dst] <= vmvar[dst] >> {value_H, value_L};
+            step <= 0;
+          end
+        endcase
       end
 
         /////////////////////////////////////
