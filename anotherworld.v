@@ -60,16 +60,18 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
   assign rgb = {b,g,r};
 
 
-  reg [3:0] step;
+  reg [3:0] step = 0;
   reg [7:0] opcode;
   reg [7:0] subopcode;
-  reg [7:0] PC;
+  reg [15:0] PC = 0;
+  reg [7:0] SP = 0;
   reg [7:0] src;
   reg [7:0] dst;
   reg [7:0] value_H;
   reg [7:0] value_L;
   reg condition;
   reg [7:0] mem[0:8'h6E];
+  reg [15:0] stack[0:255];
   reg [15:0] vmvar[0:255];
 
   integer i;
@@ -90,18 +92,17 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
 
   always @ (posedge clk)
   begin
+    if (~reset) begin
+      step <= 0;
+      PC <= 8'b00000000;
+    end
+
     if (step==0) begin
       // fetch opcode
       opcode = mem[PC];
       PC <= PC + 1;
+      step <= 1;
     end
-
-    if (~reset) begin
-        step <= 0;
-        PC <= 8'b00000000;
-      end
-    else
-      step <= step + 1;
 
     case(opcode)
         ///////////////////////////////
@@ -280,9 +281,37 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
       end
 
       `opcode_call: begin
+        case(step)
+          1: begin
+            value_H <= mem[PC];
+            PC <= PC + 1;
+            step <= 2;
+          end
+          2: begin
+            value_L <= mem[PC];
+            PC <= PC + 1;
+            step <= 3;
+          end
+          3: begin
+            stack[SP] <= PC;
+            SP <= SP + 1;
+            PC <= {value_H, value_L};
+            step <= 0;
+          end
+        endcase
       end
 
       `opcode_ret: begin
+        case(step)
+          1: begin
+            SP <= SP - 1;
+            step <= 2;
+          end
+          2: begin
+            PC <= stack[SP];
+            step <= 0;
+          end
+        endcase
       end
 
       `opcode_sub: begin
