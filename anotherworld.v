@@ -88,6 +88,10 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
       step <= step + 1;
 
     case(opcode)
+        ///////////////////////////////
+       // GENERIC CPU INSTRUCTIONS: //
+      ///////////////////////////////
+
       `opcode_movConst: begin
         case(step)
           1: begin
@@ -116,11 +120,15 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
         case(step)
           1: begin
             dst <= mem[PC];
-            src <= mem[PC+1];
-            PC <= PC + 2;
+            PC <= PC + 1;
             step <= 2;
           end
           2: begin
+            src <= mem[PC];
+            PC <= PC + 1;
+            step <= 3;
+          end
+          3: begin
             vmvar[dst] <= vmvar[src];
             step <= 0;
           end
@@ -131,11 +139,15 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
         case(step)
           1: begin
             dst <= mem[PC];
-            src <= mem[PC+1];
-            PC <= PC + 2;
+            PC <= PC + 1;
             step <= 2;
           end
           2: begin
+            src <= mem[PC];
+            PC <= PC + 1;
+            step <= 3;
+          end
+          3: begin
             vmvar[dst] <= vmvar[dst] + vmvar[src];
             step <= 0;
           end
@@ -146,12 +158,106 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
         case(step)
           1: begin
             dst <= mem[PC];
-            value_L <= mem[PC+1];
-            PC <= PC + 2;
+            PC <= PC + 1;
             step <= 2;
           end
           2: begin
+            value_L <= mem[PC];
+            PC <= PC + 1;
+            step <= 3;
+          end
+          3: begin
             vmvar[dst] <= vmvar[dst] + value_L;
+            step <= 0;
+          end
+        endcase
+      end
+
+      `opcode_jmp: begin
+        case(step)
+          1: begin
+            value_H <= mem[PC];
+            step <= 2;
+          end
+          2: begin
+            value_L <= mem[PC];
+            step <= 3;
+          end
+          3: begin
+            PC <= {value_H, value_L};
+            step <= 0;
+          end
+        endcase
+      end
+
+      `opcode_djnz: begin
+        case(step)
+          1: begin
+            dst <= mem[PC];
+            step <= 2;
+            PC <= PC + 1;
+          end
+          2: begin
+            value_H <= mem[PC];
+            vmvar[dst] <= vmvar[dst] - 1;
+            step <= 3;
+            PC <= PC + 1;
+          end
+          3: begin
+            value_L <= mem[PC];
+            step <= 4;
+            PC <= PC + 1;
+          end
+          4: begin
+            if (vmvar[dst] != 0)
+              PC <= {value_H, value_L};
+            step <= 0;
+          end
+        endcase
+      end
+
+      `opcode_condJmp: begin
+        case(step)
+          1: begin
+            subopcode <= mem[PC];
+            PC <= PC + 1;
+            step <= 2;
+          end
+          2: begin
+            src <= mem[PC];
+            PC <= PC + 1;
+            step <= 3;
+          end
+          3: begin
+            value_L <= mem[PC];
+            PC <= PC + 1;
+            step <= 4;
+          end
+          4: begin
+            if (subopcode[7])
+              {value_H, value_L} <= vmvar[value_L];
+            else if (subopcode[6]) begin
+              value_L <= {value_L, mem[PC]};
+              PC <= PC + 1;
+            end
+            step <= 5;
+          end
+          5: begin
+            case(subopcode[2:0])
+              0: condition <= vmvar[src] == {value_H, value_L}; // jz
+              1: condition <= vmvar[src] != {value_H, value_L}; // jnz
+              2: condition <= vmvar[src] > {value_H, value_L};  // jg
+              3: condition <= vmvar[src] >= {value_H, value_L}; // jge
+              4: condition <= vmvar[src] < {value_H, value_L};  // jl
+              5: condition <= vmvar[src] <= {value_H, value_L}; // jle
+              default: condition <= 0;
+            endcase
+            step <= 6;
+          end
+          6: begin
+            if (condition) begin
+              PC <= {value_H, value_L};
+            end
             step <= 0;
           end
         endcase
@@ -163,73 +269,91 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
       `opcode_ret: begin
       end
 
-      `opcode_pauseThread: begin
-      end
-
-      `opcode_jmp: begin
+      `opcode_sub: begin
         case(step)
           1: begin
-            value_H <= mem[PC];
-            value_L <= mem[PC+1];
+            dst <= mem[PC];
+            PC <= PC + 1;
             step <= 2;
           end
           2: begin
-            PC <= {value_H, value_L};
+            src <= mem[PC];
+            PC <= PC + 1;
+            step <= 3;
+          end
+          3: begin
+            vmvar[dst] <= vmvar[dst] - vmvar[src];
             step <= 0;
           end
         endcase
+      end
+
+      `opcode_and: begin
+        case(step)
+          1: begin
+            dst <= mem[PC];
+            PC <= PC + 1;
+            step <= 2;
+          end
+          2: begin
+            src <= mem[PC];
+            PC <= PC + 1;
+            step <= 3;
+          end
+          3: begin
+            vmvar[dst] <= vmvar[dst] & vmvar[src];
+            step <= 0;
+          end
+        endcase
+      end
+
+      `opcode_or: begin
+        case(step)
+          1: begin
+            dst <= mem[PC];
+            PC <= PC + 1;
+            step <= 2;
+          end
+          2: begin
+            src <= mem[PC];
+            PC <= PC + 1;
+            step <= 3;
+          end
+          3: begin
+            vmvar[dst] <= vmvar[dst] | vmvar[src];
+            step <= 0;
+          end
+        endcase
+      end
+
+      `opcode_shl: begin
+      end
+
+      `opcode_shr: begin
+      end
+
+        /////////////////////////////////////
+       // THREAD MANAGEMENT INSTRUCTIONS: //
+      /////////////////////////////////////
+
+      `opcode_pauseThread: begin
       end
 
       `opcode_setVec: begin
       end
 
-      `opcode_djnz: begin
+      `opcode_updateChannel: begin
       end
 
-      `opcode_condJmp: begin
-        case(step)
-          1: begin
-            subopcode <= mem[PC];
-            src <= mem[PC+1];
-            value_L <= mem[PC+2];
-            PC <= PC + 3;
-            step <= 2;
-          end
-          2: begin
-            if (subopcode[7])
-                 {value_H, value_L} <= vmvar[value_L];
-            else if (subopcode[6]) begin
-                 value_L <= {value_L, mem[PC]};
-                 PC <= PC + 1;
-            end
-            step <= 3;
-          end
-          3: begin
-            case(subopcode[2:0])
-              0: condition <= vmvar[src] == {value_H, value_L}; // jz
-              1: condition <= vmvar[src] != {value_H, value_L}; // jnz
-              2: condition <= vmvar[src] > {value_H, value_L};  // jg
-              3: condition <= vmvar[src] >= {value_H, value_L}; // jge
-              4: condition <= vmvar[src] < {value_H, value_L};  // jl
-              5: condition <= vmvar[src] <= {value_H, value_L}; // jle
-              default: condition <= 0;
-            endcase
-            step <= 4;
-          end
-          4: begin
-            if (condition) begin
-              PC <= {value_H, value_L};
-            end
-            step <= 0;
-          end
-        endcase
+      `opcode_killThread: begin
       end
+
+        /////////////////////////
+       // VIDEO INSTRUCTIONS: //
+      /////////////////////////
 
       `opcode_setPalette: begin
         // ...
-      end
-
-      `opcode_updateChannel: begin
       end
 
       `opcode_selectVideoPage: begin
@@ -247,70 +371,24 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
         // ...
       end
 
-      `opcode_killThread: begin
-      end
-
       `opcode_text: begin
       end
 
-      `opcode_sub: begin
-        case(step)
-          1: begin
-            dst <= mem[PC];
-            src <= mem[PC+1];
-            PC <= PC + 2;
-            step <= 2;
-          end
-          2: begin
-            vmvar[dst] <= vmvar[dst] - vmvar[src];
-            step <= 0;
-          end
-        endcase
-      end
-
-      `opcode_and: begin
-        case(step)
-          1: begin
-            dst <= mem[PC];
-            src <= mem[PC+1];
-            PC <= PC + 2;
-            step <= 2;
-          end
-          2: begin
-            vmvar[dst] <= vmvar[dst] & vmvar[src];
-            step <= 0;
-          end
-        endcase
-      end
-
-      `opcode_or: begin
-        case(step)
-          1: begin
-            dst <= mem[PC];
-            src <= mem[PC+1];
-            PC <= PC + 2;
-            step <= 2;
-          end
-          2: begin
-            vmvar[dst] <= vmvar[dst] | vmvar[src];
-            step <= 0;
-          end
-        endcase
-      end
-
-      `opcode_shl: begin
-      end
-
-      `opcode_shr: begin
-      end
+        /////////////////////////
+       // AUDIO INSTRUCTIONS: //
+      /////////////////////////
 
       `opcode_playSound: begin
       end
 
-      `opcode_updateMemList: begin
+      `opcode_playMusic: begin
       end
 
-      `opcode_playMusic: begin
+        ///////////////////
+       // VM RESOURCES: //
+      ///////////////////
+
+      `opcode_updateMemList: begin
       end
 
     endcase
