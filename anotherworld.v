@@ -92,13 +92,21 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
         case(step)
           1: begin
             dst <= mem[PC];
-            value_H <= mem[PC+1];
-            value_L <= mem[PC+2];
-            PC <= PC + 3;
+            PC <= PC + 1;
             step <= 2;
           end
           2: begin
-            vmvar[dst] <= word;
+            value_H <= mem[PC];
+            PC <= PC + 1;
+            step <= 3;
+          end
+          3: begin
+            value_L <= mem[PC];
+            PC <= PC + 1;
+            step <= 4;
+          end
+          4: begin
+            vmvar[dst] <= {value_H, value_L};
             step <= 0;
           end
         endcase
@@ -204,7 +212,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
               3: condition <= vmvar[src] >= {value_H, value_L}; // jge
               4: condition <= vmvar[src] < {value_H, value_L};  // jl
               5: condition <= vmvar[src] <= {value_H, value_L}; // jle
-              default: condition <= false;
+              default: condition <= 0;
             endcase
             step <= 4;
           end
