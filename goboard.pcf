@@ -49,15 +49,15 @@ set_io --warn-no-port TX  74
 # -------------------------- VGA ---------------------------------------------
 set_io --warn-no-port hsync  26 # VGA_HS
 set_io --warn-no-port vsync  27 # VGA_VS
-set_io --warn-no-port rgb[0]  36 # VGA_R0
-set_io --warn-no-port VGA_R1  37
-set_io --warn-no-port VGA_R2  40
-set_io --warn-no-port rgb[1]  29 # VGA_G0
-set_io --warn-no-port VGA_G1  30
-set_io --warn-no-port VGA_G2  33
-set_io --warn-no-port rgb[2]  28 # VGA_B0
-set_io --warn-no-port VGA_B1  41
-set_io --warn-no-port VGA_B2  42
+set_io --warn-no-port r[0]  36 # VGA_R0
+set_io --warn-no-port r[1]  37 # VGA_R1
+set_io --warn-no-port r[2]  40 # VGA_R2
+set_io --warn-no-port g[0]  29 # VGA_G0
+set_io --warn-no-port g[1]  30 # VGA_G1
+set_io --warn-no-port g[2]  33 # VGA_G2
+set_io --warn-no-port b[0]  28 # VGA_B0
+set_io --warn-no-port b[1]  41 # VGA_B1
+set_io --warn-no-port b[2]  42 # VGA_B2
 
 # ------------ PMOD connector ------------------------------------------------
 #

@@ -28,11 +28,14 @@
 `define opcode_updateMemList 8'h19
 `define opcode_playMusic 8'h1A
 
-module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
+module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
   input clk, reset;
   output hsync, vsync;
-  output [2:0] rgb;
+  output reg [2:0] r;
+  output reg [2:0] g;
+  output reg [2:0] b;
+
   wire display_on;
   wire [9:0] hpos;
   wire [9:0] vpos;
@@ -53,13 +56,33 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
     .vpos(vpos)
   );
 
-  wire [3:0] color = pages[curPage*(320*200) + hpos*320 + vpos];
-  wire [15:0] color_bits = palettes[curStage][curPalette][color];
-  wire r = display_on && {color_bits[11:8], color_bits[11:10]};
-  wire g = display_on && {color_bits[7:4], color_bits[7:6]};
-  wire b = display_on && {color_bits[3:0], color_bits[3:2]};
-  assign rgb = {b,g,r};
+  reg [15:0] color_bits;
+  reg [3:0] color;
+  always @ (posedge clk) begin
+    color <= pages[curPage*(320*200) + hpos*320 + vpos];
+    color_bits <= palettes[curStage][curPalette][color];
 
+    if (display_on) begin
+      // Here's the actual color-scheme from
+      // the original VM with 6 bits per channel:
+      //
+      // r <= {color_bits[11:8], color_bits[11:10]};
+      // g <= {color_bits[7:4], color_bits[7:6]};
+      // b <= {color_bits[3:0], color_bits[3:2]};
+      //
+      // But this is what we'll use on the NAND LAND Go-Board
+      // because it only has 3 bits per color channel in the
+      // DACs connected to its VGA connector:
+      r <= color_bits[11:9];
+      g <= color_bits[7:5];
+      b <= color_bits[3:1];
+    end
+    else begin
+      r <= 3'b000;
+      g <= 3'b000;
+      b <= 3'b000;
+    end
+  end
 
   reg [3:0] step = 0;
   reg [7:0] opcode;
