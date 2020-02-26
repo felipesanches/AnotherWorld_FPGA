@@ -39,8 +39,9 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
   reg [4:0] curPalette = 0;
   reg [1:0] curPage = 0;
   reg [1:0] curStage = 0;
-  reg [15:0] palettes[0:18*32*16-1]; //18 stages (?) with 32 palettes of 16 colors (16 bits each)
-  reg [7:0] pages[0:4*320*200-1];
+  reg [3:0] pages[0:3][0:320*200-1];
+  reg [15:0] palettes[0:17][0:31][0:15]; //18 stages with 32 palettes
+                                         // of 16 colors (16 bits each)
 
   hvsync_generator hvsync_gen(
     .clk(clk),
@@ -52,8 +53,8 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
     .vpos(vpos)
   );
 
-  wire [7:0] color = pages[curPage*(320*200) + hpos*320 + vpos];
-  wire [15:0] color_bits = palettes[curStage*32*16 + curPalette*16 + color[3:0]];
+  wire [3:0] color = pages[curPage*(320*200) + hpos*320 + vpos];
+  wire [15:0] color_bits = palettes[curStage][curPalette][color];
   wire r = display_on && {color_bits[11:8], color_bits[11:10]};
   wire g = display_on && {color_bits[7:4], color_bits[7:6]};
   wire b = display_on && {color_bits[3:0], color_bits[3:2]};
@@ -440,7 +441,25 @@ module anotherworld_cpu(clk, reset, hsync, vsync, rgb);
       /////////////////////////
 
       `opcode_setPalette: begin
-        // ...
+        case(step)
+          1: begin
+            // Note: This seems a bug in the original VM, since the palette IDs do not really
+            //       need more than 5 bits to be selected, but the instruction is encoded
+            //       with a 16 bit operand. So, value_H is not used at all in here...
+            value_H <= mem[PC];
+            PC <= PC + 1;
+            step <= 2;
+          end
+          2: begin
+            value_L <= mem[PC];
+            PC <= PC + 1;
+            step <= 3;
+          end
+          3: begin
+            curPalette <= value_L[4:0];
+            step <= 0;
+          end
+        endcase
       end
 
       `opcode_selectVideoPage: begin
