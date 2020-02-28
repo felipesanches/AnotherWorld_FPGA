@@ -43,9 +43,8 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   reg [1:0] curPage = 0;
   reg [1:0] curStage = 0;
   reg [3:0] pages[0:3][0:320*200-1];
-  reg [15:0] palettes[0:17][0:31][0:15]; //18 stages with 32 palettes
+  reg [15:0] palettes[0:17][0:31][0:15]; // 18 stages with 32 palettes
                                          // of 16 colors (16 bits each)
-
   hvsync_generator hvsync_gen(
     .clk(clk),
     .reset(0),
@@ -100,14 +99,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
   integer i;
   initial begin
-//FIXME:
-    $readmemh("ROMs/palettes.mem", palettes);
-    //
-    //f_bin = $fopen("ROMs/palettes.rom", "rb");
-    //for (i=0; i<=18*32*16; i=i+1) begin
-    //  f = $fread(r16, f_bin);
-    //  palettes = r16;
-    //end
+    $readmemh("ROMs/palettes.mem", palettes, 0, 18*32*16 - 1);
 
     $readmemh("bytecode.mem", mem);
     for (i=0; i<=256; i=i+1)
@@ -479,7 +471,8 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
             step <= 3;
           end
           3: begin
-            curPalette <= value_L[4:0];
+            //FIXME!
+            //curPalette <= value_L[4:0];
             step <= 0;
           end
         endcase
