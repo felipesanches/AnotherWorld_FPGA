@@ -42,6 +42,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   reg [4:0] curPalette = 0;
   reg [1:0] curPage = 0;
   reg [4:0] curStage = 0;
+  reg [3:0] active_video[0:320*200-1];
   reg [3:0] pages[0:3][0:320*200-1];
   reg [15:0] palettes[0:17][0:31][0:15]; // 18 stages with 32 palettes
                                          // of 16 colors (16 bits each)
@@ -58,7 +59,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   reg [15:0] color_bits;
   reg [3:0] color_index;
   always @ (posedge clk) begin
-    color_index <= pages[curPage*320*200 + vpos*320 + hpos];
+    color_index <= active_video[vpos*320 + hpos];
     color_bits <= palettes[curStage*32*16 + curPalette*16 + color_index];
 
     if (display_on) begin
@@ -503,7 +504,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
           end
           3: begin
             //FIXME: This seems to cause the same problem as the curPalette assignment
-            //pages[dst[1:0]*320*200 + y*320 + x] <= value_L;
+            //pages[dst[1:0]*320*200 + y*320 + x] <= value_L[3:0];
             if (x == 319) begin
               if (y == 199)
                 step <= 0;
@@ -512,6 +513,8 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
                 y <= y + 1;
               end
             end
+            else
+              x <= x + 1;
           end
         endcase
       end
@@ -520,7 +523,31 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
       end
 
       `opcode_blitFrameBuffer: begin
-        // ...
+        //TODO: move this into a separate circuit and make the
+        //      instruction simply request the video operation
+        case(step)
+          1: begin
+            src <= mem[PC]; // pageID
+            x <= 0;
+            y <= 0;
+            PC <= PC + 1;
+            step <= 2;
+          end
+          2: begin
+            //FIXME: This seems to cause the same problem as the curPalette assignment
+            //active_video[y*320 + x] <= pages[src[1:0]*320*200 + y*320 + x];
+            if (x == 319) begin
+              if (y == 199)
+                step <= 0;
+              else begin
+                x <= 0;
+                y <= y + 1;
+              end
+            end
+            else
+              x <= x + 1;
+          end
+        endcase
       end
 
       `opcode_text: begin
