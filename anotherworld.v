@@ -41,7 +41,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   wire [9:0] vpos;
   reg [4:0] curPalette = 0;
   reg [1:0] curPage = 0;
-  reg [1:0] curStage = 0;
+  reg [4:0] curStage = 0;
   reg [3:0] pages[0:3][0:320*200-1];
   reg [15:0] palettes[0:17][0:31][0:15]; // 18 stages with 32 palettes
                                          // of 16 colors (16 bits each)
@@ -56,10 +56,10 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   );
 
   reg [15:0] color_bits;
-  reg [3:0] color;
+  reg [3:0] color_index;
   always @ (posedge clk) begin
-    color <= pages[curPage*(320*200) + hpos*320 + vpos];
-    color_bits <= palettes[curStage][curPalette][color];
+    color_index <= pages[curPage*320*200 + vpos*320 + hpos];
+    color_bits <= palettes[curStage*32*16 + curPalette*16 + color_index];
 
     if (display_on) begin
       // Here's the actual color-scheme from
@@ -466,13 +466,8 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
             step <= 2;
           end
           2: begin
-            value_L <= mem[PC];
+            //FIXME: curPalette <= mem[PC][4:0]; // "value_L"
             PC <= PC + 1;
-            step <= 3;
-          end
-          3: begin
-            //FIXME!
-            //curPalette <= value_L[4:0];
             step <= 0;
           end
         endcase
