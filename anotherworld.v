@@ -85,7 +85,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   end
 
   reg [3:0] step = 0;
-  reg [7:0] opcode;
+  reg [7:0] opcode = 0;
   reg [7:0] subopcode;
   reg [15:0] PC = 0;
   reg [7:0] SP = 0;
@@ -112,17 +112,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   always @ (posedge clk)
   begin
     if (~reset) begin
-      step <= 0;
-      PC <= 8'b00000000;
+      step <= 4'b0000;
+      PC <= 16'h0000;
+      opcode <= 8'h00;
     end
-
-    if (step==0) begin
-      // fetch opcode
-      opcode = mem[PC];
-      PC <= PC + 1;
-      step <= 1;
-    end
-
+    else
     case(opcode)
         ///////////////////////////////
        // GENERIC CPU INSTRUCTIONS: //
@@ -130,6 +124,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_movConst: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             dst <= mem[PC];
             PC <= PC + 1;
@@ -154,6 +153,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_mov: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             dst <= mem[PC];
             PC <= PC + 1;
@@ -173,6 +177,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_add: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             dst <= mem[PC];
             PC <= PC + 1;
@@ -192,6 +201,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_addConst: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             dst <= mem[PC];
             PC <= PC + 1;
@@ -211,6 +225,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_jmp: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             value_H <= mem[PC];
             step <= 2;
@@ -228,6 +247,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_djnz: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             dst <= mem[PC];
             step <= 2;
@@ -254,6 +278,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_condJmp: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             subopcode <= mem[PC];
             PC <= PC + 1;
@@ -301,6 +330,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_call: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             value_H <= mem[PC];
             PC <= PC + 1;
@@ -322,6 +356,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_ret: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             SP <= SP - 1;
             step <= 2;
@@ -335,6 +374,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_sub: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             dst <= mem[PC];
             PC <= PC + 1;
@@ -354,6 +398,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_and: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             dst <= mem[PC];
             PC <= PC + 1;
@@ -373,6 +422,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_or: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             dst <= mem[PC];
             PC <= PC + 1;
@@ -392,6 +446,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_shl: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             dst <= mem[PC];
             PC <= PC + 1;
@@ -416,6 +475,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_shr: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             dst <= mem[PC];
             PC <= PC + 1;
@@ -460,6 +524,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_setPalette: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             // Note: This seems a bug in the original VM, since the palette IDs do not really
             //       need more than 5 bits to be selected, but the instruction is encoded
@@ -478,6 +547,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
       `opcode_selectVideoPage: begin
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             curPage <= mem[PC][1:0];
             PC <= PC + 1;
@@ -490,6 +564,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
         //TODO: move this into a separate circuit and make the
         //      instruction simply request the video operation
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             dst <= mem[PC]; // pageID
             x <= 0;
@@ -526,6 +605,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
         //TODO: move this into a separate circuit and make the
         //      instruction simply request the video operation
         case(step)
+          0: begin
+            opcode = mem[PC];
+            PC <= PC + 1;
+            step <= 1;
+          end
           1: begin
             src <= mem[PC]; // pageID
             x <= 0;
