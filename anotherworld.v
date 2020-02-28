@@ -479,7 +479,13 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
       end
 
       `opcode_selectVideoPage: begin
-        // ...
+        case(step)
+          1: begin
+            curPage <= mem[PC][1:0];
+            PC <= PC + 1;
+            step <= 0;
+          end
+        endcase
       end
 
       `opcode_fillVideoPage: begin
