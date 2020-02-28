@@ -96,6 +96,8 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   reg [7:0] mem[0:16'hFFFF];
   reg [15:0] stack[0:255];
   reg [15:0] vmvar[0:255];
+  reg [8:0] x; //count up to 319
+  reg [7:0] y; //count up to 199
 
   integer i;
   initial begin
@@ -484,7 +486,34 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
       end
 
       `opcode_fillVideoPage: begin
-        // ...
+        //TODO: move this into a separate circuit and make the
+        //      instruction simply request the video operation
+        case(step)
+          1: begin
+            dst <= mem[PC]; // pageID
+            x <= 0;
+            y <= 0;
+            PC <= PC + 1;
+            step <= 2;
+          end
+          2: begin
+            value_L <= mem[PC]; // color
+            PC <= PC + 1;
+            step <= 3;
+          end
+          3: begin
+            //FIXME: This seems to cause the same problem as the curPalette assignment
+            //pages[dst[1:0]*320*200 + y*320 + x] <= value_L;
+            if (x == 319) begin
+              if (y == 199)
+                step <= 0;
+              else begin
+                x <= 0;
+                y <= y + 1;
+              end
+            end
+          end
+        endcase
       end
 
       `opcode_copyVideoPage: begin
