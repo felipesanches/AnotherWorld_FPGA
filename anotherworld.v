@@ -36,16 +36,36 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   output reg [2:0] g;
   output reg [2:0] b;
 
+// == Amount of RAM needed ==
+// Total of 5 pages:
+//   - 1 active_video page
+//   - 4 "work" video pages
+//
+// Each page has 320x200 pixels.
+// Each pixel has 4 bits
+// Total = 5*320*200*4 = 1280000 bits = approx. 1.28 Mbits
+//
+// There's not enough RAM in the NAND Land Go-Board for that and
+// I suspect that's the reason why this project does not build sucessfully at this point.
+// I am considering adapting this code to run on the ULX3S board:
+// https://hackaday.com/2019/01/14/ulx3s-an-open-source-lattice-ecp5-fpga-pcb/
+
   wire display_on;
   wire [9:0] hpos;
   wire [9:0] vpos;
+  wire [15:0] pixel_addr;
+  wire [17:0] pages_addr;
+  wire [13:0] pal_addr;
   reg [4:0] curPalette = 0;
   reg [1:0] curPage = 0;
   reg [4:0] curStage = 0;
-  reg [3:0] active_video[0:320*200-1];
-  reg [3:0] pages[0:3][0:320*200-1];
-  reg [15:0] palettes[0:17][0:31][0:15]; // 18 stages with 32 palettes
-                                         // of 16 colors (16 bits each)
+  reg [15:0] color_bits;
+  reg [3:0] color_index;
+  reg [3:0] active_video[0:63999]; // 320*200 = 64000 pixels
+  reg [3:0] pages[0:255999]; // 4*320*200 = 256000 pixels
+  reg [15:0] palettes[0:9215]; // 18*32*16 = 9216 entries
+                              // 18 stages with 32 palettes
+                             // of 16 colors (16 bits each)
   hvsync_generator hvsync_gen(
     .clk(clk),
     .reset(0),
@@ -56,13 +76,13 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
     .vpos(vpos)
   );
 
-  reg [15:0] color_bits;
-  reg [3:0] color_index;
   always @ (posedge clk) begin
-    color_index <= active_video[vpos*320 + hpos];
-    color_bits <= palettes[curStage*32*16 + curPalette*16 + color_index];
+    //actual resolution is 320x200 starting at line 40:
+    if (display_on && hpos <= 640 && vpos >= 40 && vpos <= 440) begin
+      color_index <= active_video[(vpos[9:1]-20)*320 + hpos[9:1]];
+      pal_addr <= curStage*32*16 + curPalette*16 + color_index;
+      color_bits <= palettes[pal_addr];
 
-    if (display_on) begin
       // Here's the actual color-scheme from
       // the original VM with 6 bits per channel:
       //
@@ -104,8 +124,11 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   initial begin
     $readmemh("ROMs/palettes.mem", palettes, 0, 18*32*16 - 1);
 
+    for (i=0; i<=16'hFFFF; i=i+1)
+      mem[i] = 0;
     $readmemh("bytecode.mem", mem);
-    for (i=0; i<=256; i=i+1)
+
+    for (i=0; i<=8'hFF; i=i+1)
       vmvar[i] = 0;
   end
 
@@ -538,7 +561,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
             step <= 2;
           end
           2: begin
-            //FIXME: curPalette <= mem[PC][4:0]; // "value_L"
+            curPalette <= mem[PC][4:0]; // "value_L"
             PC <= PC + 1;
             step <= 0;
           end
@@ -582,8 +605,8 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
             step <= 3;
           end
           3: begin
-            //FIXME: This seems to cause the same problem as the curPalette assignment
-            //pages[dst[1:0]*320*200 + y*320 + x] <= value_L[3:0];
+            pages_addr <= dst[1:0]*320*200 + y*320 + x;
+            pages[pages_addr] <= value_L[3:0];
             if (x == 319) begin
               if (y == 199)
                 step <= 0;
@@ -618,8 +641,12 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
             step <= 2;
           end
           2: begin
-            //FIXME: This seems to cause the same problem as the curPalette assignment
-            //active_video[y*320 + x] <= pages[src[1:0]*320*200 + y*320 + x];
+            if (x <= 319 && y <= 199) begin
+              pixel_addr <= y*320 + x;
+              pages_addr <= src[1:0]*320*200 + y*320 + x;
+              active_video[pixel_addr] <= pages[pages_addr];
+            end
+
             if (x == 319) begin
               if (y == 199)
                 step <= 0;
