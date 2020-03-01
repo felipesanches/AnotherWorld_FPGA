@@ -1,22 +1,17 @@
 PROJ = anotherworld
-PIN_DEF = goboard.pcf
-DEVICE = hx1k
 
-all: $(PROJ).rpt $(PROJ).bin
+all: $(PROJ).bit
 
-%.blif: %.v
-	yosys -p 'synth_ice40 -top anotherworld_cpu -blif $@' $<
+%.json: %.v
+	yosys -p 'synth_ecp5 -top anotherworld_cpu -json $@' $<
 
-%.asc: $(PIN_DEF) %.blif
-	arachne-pnr -d $(subst hx,,$(subst lp,,$(DEVICE))) -o $@ -p $^ -P vq100
+$(PROJ)_out.config: $(PROJ).json $(PROJ).lpf
+	nextpnr-ecp5 --json $(PROJ).json --textcfg $(PROJ)_out.config --um5g-85k --package CABGA381 --lpf $(PROJ).lpf
 
-%.bin: %.asc
-	icepack $< $@
-
-%.rpt: %.asc
-	icetime -d $(DEVICE) -mtr $@ $<
+$(PROJ).bit: $(PROJ)_out.config
+	ecppack --svf $(PROJ).svf $(PROJ)_out.config $(PROJ).bit
 
 clean:
-	rm -f $(PROJ).blif $(PROJ).asc $(PROJ).rpt $(PROJ).bin
+	rm -f $(PROJ).bit $(PROJ)_out.config $(PROJ).svf $(PROJ).json
 
 .PHONY: all prog clean
