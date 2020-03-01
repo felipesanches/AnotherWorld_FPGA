@@ -114,7 +114,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   reg [7:0] value_H;
   reg [7:0] value_L;
   reg condition;
-  reg [7:0] mem[0:16'hFFFF];
+  reg [7:0] mem[0:8'hFF]; // for now I'll only declare 256 bytes which is enough for the small sample bytecode used for testing. Later we should increase this to cover the full 16 bit addressing range: 16'hFFFF
   reg [15:0] stack[0:255];
   reg [15:0] vmvar[0:255];
   reg [8:0] x; //count up to 319
@@ -124,8 +124,6 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   initial begin
     $readmemh("ROMs/palettes.mem", palettes, 0, 18*32*16 - 1);
 
-    for (i=0; i<=16'hFFFF; i=i+1)
-      mem[i] = 0;
     $readmemh("bytecode.mem", mem);
 
     for (i=0; i<=8'hFF; i=i+1)
