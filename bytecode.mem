@@ -48,4 +48,4 @@
 02 05 03             // add [BALL_VY], [SPEED]
 
 // _4: (006C)
-07 00 25             jmp mainloop
+07 00 25             // jmp mainloop
