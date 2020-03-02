@@ -32,9 +32,9 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
   input clk, reset;
   output hsync, vsync;
-  output [2:0] r;
-  output [2:0] g;
-  output [2:0] b;
+  output reg [2:0] r;
+  output reg [2:0] g;
+  output reg [2:0] b;
 
 // == Amount of RAM needed ==
 // Total of 5 pages:
@@ -53,8 +53,6 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   wire display_on;
   wire [9:0] hpos;
   wire [9:0] vpos;
-  wire [15:0] pixel_addr;
-  wire [17:0] pages_addr;
   reg [4:0] curPalette = 0;
   reg [1:0] curPage = 0;
   reg [4:0] curStage = 0;
@@ -65,7 +63,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
                              // of 16 colors (16 bits each)
   hvsync_generator hvsync_gen(
     .clk(clk),
-    .reset(0),
+    .reset(1'b0),
     .hsync(hsync),
     .vsync(vsync),
     .display_on(display_on),
@@ -79,10 +77,14 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   wire [13:0] pal_addr = curStage*32*16 + curPalette*16 + color_index;
   wire [15:0] color_bits = palettes[pal_addr];
 
+  wire [15:0] pixel_addr = y*320 + x;
+  wire [17:0] pages_addr = dst[1:0]*320*200 + y*320 + x;
+
   always @ (posedge clk)
   begin
+
     case (video_is_active)
-      1: begin
+      1'b1: begin
         // Here's the actual color-scheme from
         // the original VM with 6 bits per channel:
         //
@@ -100,7 +102,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
         // FIXME: planning to use the ULX3S board, I'll have to figure out
         // how many color bits the board can support via its HDMI output.
       end
-      0: begin
+      1'b0: begin
         r = 3'b000;
         g = 3'b000;
         b = 3'b000;
@@ -607,7 +609,6 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
             step <= 3;
           end
           3: begin
-            pages_addr <= dst[1:0]*320*200 + y*320 + x;
             pages[pages_addr] <= value_L[3:0];
             if (x == 319) begin
               if (y == 199)
@@ -636,7 +637,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
             step <= 1;
           end
           1: begin
-            src <= mem[PC]; // pageID
+            dst <= mem[PC]; // pageID src (even though we use the dst register)
             x <= 0;
             y <= 0;
             PC <= PC + 1;
@@ -644,8 +645,6 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
           end
           2: begin
             if (x <= 319 && y <= 199) begin
-              pixel_addr <= y*320 + x;
-              pages_addr <= src[1:0]*320*200 + y*320 + x;
               active_video[pixel_addr] <= pages[pages_addr];
             end
 
