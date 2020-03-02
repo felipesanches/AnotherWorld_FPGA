@@ -32,9 +32,9 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
 
   input clk, reset;
   output hsync, vsync;
-  output reg [2:0] r;
-  output reg [2:0] g;
-  output reg [2:0] b;
+  output [2:0] r;
+  output [2:0] g;
+  output [2:0] b;
 
 // == Amount of RAM needed ==
 // Total of 5 pages:
@@ -55,12 +55,9 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   wire [9:0] vpos;
   wire [15:0] pixel_addr;
   wire [17:0] pages_addr;
-  wire [13:0] pal_addr;
   reg [4:0] curPalette = 0;
   reg [1:0] curPage = 0;
   reg [4:0] curStage = 0;
-  reg [15:0] color_bits;
-  reg [3:0] color_index;
   reg [3:0] active_video[0:63999]; // 320*200 = 64000 pixels
   reg [3:0] pages[0:255999]; // 4*320*200 = 256000 pixels
   reg [15:0] palettes[0:9215]; // 18*32*16 = 9216 entries
@@ -76,32 +73,39 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
     .vpos(vpos)
   );
 
-  always @ (posedge clk) begin
-    //actual resolution is 320x200 starting at line 40:
-    if (display_on && hpos <= 640 && vpos >= 40 && vpos <= 440) begin
-      color_index <= active_video[(vpos[9:1]-20)*320 + hpos[9:1]];
-      pal_addr <= curStage*32*16 + curPalette*16 + color_index;
-      color_bits <= palettes[pal_addr];
+  //actual resolution is 320x200 starting at line 40:
+  wire video_is_active = display_on && vpos >= 40 && vpos <= 440;
+  wire [3:0] color_index = active_video[(vpos[9:1]-20)*320 + hpos[9:1]];
+  wire [13:0] pal_addr = curStage*32*16 + curPalette*16 + color_index;
+  wire [15:0] color_bits = palettes[pal_addr];
 
-      // Here's the actual color-scheme from
-      // the original VM with 6 bits per channel:
-      //
-      // r <= {color_bits[11:8], color_bits[11:10]};
-      // g <= {color_bits[7:4], color_bits[7:6]};
-      // b <= {color_bits[3:0], color_bits[3:2]};
-      //
-      // But this is what we'll use on the NAND LAND Go-Board
-      // because it only has 3 bits per color channel in the
-      // DACs connected to its VGA connector:
-      r <= color_bits[11:9];
-      g <= color_bits[7:5];
-      b <= color_bits[3:1];
-    end
-    else begin
-      r <= 3'b000;
-      g <= 3'b000;
-      b <= 3'b000;
-    end
+  always @ (posedge clk)
+  begin
+    case (video_is_active)
+      1: begin
+        // Here's the actual color-scheme from
+        // the original VM with 6 bits per channel:
+        //
+        // wire [5:0] r = {color_bits[11:8], color_bits[11:10]};
+        // wire [5:0] g = {color_bits[7:4], color_bits[7:6]};
+        // wire [5:0] b = {color_bits[3:0], color_bits[3:2]};
+        //
+        // But this is what we'll use on the NAND LAND Go-Board
+        // because it only has 3 bits per color channel in the
+        // DACs connected to its VGA connector:
+        r = color_bits[11:9];
+        g = color_bits[7:5];
+        b = color_bits[3:1];
+
+        // FIXME: planning to use the ULX3S board, I'll have to figure out
+        // how many color bits the board can support via its HDMI output.
+      end
+      0: begin
+        r = 3'b000;
+        g = 3'b000;
+        b = 3'b000;
+      end
+    endcase
   end
 
   reg [3:0] step = 0;
