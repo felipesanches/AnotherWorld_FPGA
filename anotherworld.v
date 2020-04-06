@@ -71,18 +71,25 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
     .vpos(vpos)
   );
 
-  //actual resolution is 320x200 starting at line 40:
-  wire video_is_active = display_on && vpos >= 40 && vpos <= 440;
-  wire [3:0] color_index = active_video[(vpos[9:1]-20)*320 + hpos[9:1]];
-  wire [13:0] pal_addr = curStage*32*16 + curPalette*16 + color_index;
-  wire [15:0] color_bits = palettes[pal_addr];
+  reg video_is_active;
+  reg [3:0] color_index;
+  reg [13:0] pal_addr;
+  reg [15:0] color_bits;
+  reg [15:0] pixel_addr;
+  reg [17:0] pages_addr;
 
-  wire [15:0] pixel_addr = y*320 + x;
-  wire [17:0] pages_addr = dst[1:0]*320*200 + y*320 + x;
+  always @ (posedge clk) begin
+    //actual resolution is 320x200 starting at line 40:
+    video_is_active <= display_on && vpos >= 40 && vpos <= 440;
+    color_index <= active_video[(vpos[9:1]-20)*320 + hpos[9:1]];
+    pal_addr <= curStage*32*16 + curPalette*16 + color_index;
+    color_bits <= palettes[pal_addr];
+    pixel_addr <= y*320 + x;
+    pages_addr <= dst[1:0]*320*200 + y*320 + x;
+  end
 
   always @ (posedge clk)
   begin
-
     case (video_is_active)
       1'b1: begin
         // Here's the actual color-scheme from
@@ -130,7 +137,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   initial begin
     $readmemh("ROMs/palettes.mem", palettes, 0, 18*32*16 - 1);
 
-    $readmemh("bytecode.mem", mem);
+    $readmemh("bytecode.mem", mem, 0, 8'h6E);
 
     for (i=0; i<=8'hFF; i=i+1)
       vmvar[i] = 0;
