@@ -1,3 +1,6 @@
+// This code is designed to run on the ULX3S board:
+// https://hackaday.com/2019/01/14/ulx3s-an-open-source-lattice-ecp5-fpga-pcb/
+
 `include "hvsync_generator.v"
 
 `define opcode_movConst 8'h00
@@ -28,28 +31,45 @@
 `define opcode_updateMemList 8'h19
 `define opcode_playMusic 8'h1A
 
-module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
+module anotherworld_cpu
+(
+  input clk_25mhz,
+  input [6:0] btn,
+  output [3:0] gpdi_dp,
+  output wifi_gpio0
+);
+  parameter C_ddr = 1'b1; // 0:SDR 1:DDR
 
-  input clk, reset;
-  output hsync, vsync;
-  output reg [2:0] r;
-  output reg [2:0] g;
-  output reg [2:0] b;
+  // wifi_gpio0=1 keeps board from rebooting
+  // hold btn0 to let ESP32 take control over the board
+  assign wifi_gpio0 = btn[0];
 
-// == Amount of RAM needed ==
-// Total of 5 pages:
-//   - 1 active_video page
-//   - 4 "work" video pages
-//
-// Each page has 320x200 pixels.
-// Each pixel has 4 bits
-// Total = 5*320*200*4 = 1280000 bits = approx. 1.28 Mbits
-//
-// There's not enough RAM in the NAND Land Go-Board for that and
-// I suspect that's the reason why this project does not build sucessfully at this point.
-// I am considering adapting this code to run on the ULX3S board:
-// https://hackaday.com/2019/01/14/ulx3s-an-open-source-lattice-ecp5-fpga-pcb/
+  // clock generator
+  wire clk_250MHz, clk_125MHz, clk_25MHz, clk_locked;
+  clk_25_250_125_25
+  clock_instance
+  (
+    .clki(clk_25mhz),
+    .clko(clk_250MHz),
+    .clks1(clk_125MHz),
+    .clks2(clk_25MHz),
+    .locked(clk_locked)
+  );
+    
+  // shift clock choice SDR/DDR
+  wire clk_pixel, clk_shift;
+  assign clk_pixel = clk_25MHz;
+  generate
+    if(C_ddr == 1'b1)
+      assign clk_shift = clk_125MHz;
+    else
+      assign clk_shift = clk_250MHz;
+  endgenerate
 
+  // VGA signal generator
+  wire [7:0] vga_r, vga_g, vga_b;
+  wire vga_hsync;
+  wire vga_vsync;
   wire display_on;
   wire [9:0] hpos;
   wire [9:0] vpos;
@@ -62,13 +82,52 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
                               // 18 stages with 32 palettes
                              // of 16 colors (16 bits each)
   hvsync_generator hvsync_gen(
-    .clk(clk),
+    .clk(clk_pixel),
     .reset(1'b0),
-    .hsync(hsync),
-    .vsync(vsync),
+    .hsync(vga_hsync),
+    .vsync(vga_vsync),
     .display_on(display_on),
     .hpos(hpos),
     .vpos(vpos)
+  );
+
+  // VGA to digital video converter
+  wire [1:0] tmds[3:0];
+  vga2dvid
+  #(
+    .C_ddr(C_ddr),
+    .C_shift_clock_synchronizer(1'b1)
+  )
+  vga2dvid_instance
+  (
+    .clk_pixel(clk_pixel),
+    .clk_shift(clk_shift),
+    .in_red(vga_r),
+    .in_green(vga_g),
+    .in_blue(vga_b),
+    .in_hsync(vga_hsync),
+    .in_vsync(vga_vsync),
+    .in_blank(~display_on),
+    .out_clock(tmds[3]),
+    .out_red(tmds[2]),
+    .out_green(tmds[1]),
+    .out_blue(tmds[0])
+  );
+
+  // output TMDS SDR/DDR data to fake differential lanes
+  fake_differential
+  #(
+    .C_ddr(C_ddr)
+  )
+  fake_differential_instance
+  (
+    .clk_shift(clk_shift),
+    .in_clock(tmds[3]),
+    .in_red(tmds[2]),
+    .in_green(tmds[1]),
+    .in_blue(tmds[0]),
+    .out_p(gpdi_dp)
+    //.out_n(gpdi_dn)
   );
 
   reg video_is_active;
@@ -78,7 +137,7 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
   reg [15:0] pixel_addr;
   reg [17:0] pages_addr;
 
-  always @ (posedge clk) begin
+  always @ (posedge clk_pixel) begin
     //actual resolution is 320x200 starting at line 40:
     video_is_active <= display_on && vpos >= 40 && vpos <= 440;
     color_index <= active_video[(vpos[9:1]-20)*320 + hpos[9:1]];
@@ -88,31 +147,24 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
     pages_addr <= dst[1:0]*320*200 + y*320 + x;
   end
 
-  always @ (posedge clk)
+  always @ (posedge clk_pixel)
   begin
     case (video_is_active)
       1'b1: begin
-        // Here's the actual color-scheme from
-        // the original VM with 6 bits per channel:
-        //
-        // wire [5:0] r = {color_bits[11:8], color_bits[11:10]};
-        // wire [5:0] g = {color_bits[7:4], color_bits[7:6]};
-        // wire [5:0] b = {color_bits[3:0], color_bits[3:2]};
-        //
-        // But this is what we'll use on the NAND LAND Go-Board
-        // because it only has 3 bits per color channel in the
-        // DACs connected to its VGA connector:
-        r = color_bits[11:9];
-        g = color_bits[7:5];
-        b = color_bits[3:1];
+        //TODO: actual colors from the VM buffers:
+        //vga_r = {color_bits[11:8], color_bits[11:10], 2'b00};
+        //vga_g = {color_bits[7:4], color_bits[7:6], 2'b00};
+        //vga_b = {color_bits[3:0], color_bits[3:2], 2'b00};
 
-        // FIXME: planning to use the ULX3S board, I'll have to figure out
-        // how many color bits the board can support via its HDMI output.
+        //test-pattern:
+        vga_r = {hpos[6:3], 4'b0000};
+        vga_g = {vpos[6:3], 4'b0000};
+        vga_b = {hpos[5:2], 4'b0000};
       end
       1'b0: begin
-        r = 3'b000;
-        g = 3'b000;
-        b = 3'b000;
+        vga_r = 8'b00000000;
+        vga_g = 8'b00000000;
+        vga_b = 8'b00000000;
       end
     endcase
   end
@@ -143,14 +195,8 @@ module anotherworld_cpu(clk, reset, hsync, vsync, r, g, b);
       vmvar[i] = 0;
   end
 
-  always @ (posedge clk)
+  always @ (posedge clk_25mhz)
   begin
-    if (~reset) begin
-      step <= 4'b0000;
-      PC <= 16'h0000;
-      opcode <= 8'h00;
-    end
-    else
     case(opcode)
         ///////////////////////////////
        // GENERIC CPU INSTRUCTIONS: //
